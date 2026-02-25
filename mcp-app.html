@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Line Chart App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #101820;
+        --muted: #5a6772;
+        --panel: rgba(255, 255, 255, 0.86);
+        --accent: #f06449;
+        --accent-2: #0b7a75;
+        --grid: rgba(16, 24, 32, 0.12);
+        font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, #fff5e6 0%, #f7f2ec 40%, #e9f4f2 100%);
+        color: var(--ink);
+      }
+
+      .frame {
+        width: min(920px, 95vw);
+        padding: 28px;
+        border-radius: 24px;
+        background: var(--panel);
+        box-shadow: 0 20px 60px rgba(16, 24, 32, 0.18);
+        backdrop-filter: blur(10px);
+      }
+
+      .header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .title {
+        font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .subtitle {
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+
+      .status {
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(11, 122, 117, 0.1);
+        color: var(--accent-2);
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .chart-shell {
+        position: relative;
+        border-radius: 18px;
+        border: 1px solid rgba(16, 24, 32, 0.08);
+        background: linear-gradient(135deg, #ffffff 0%, #fdf7f2 100%);
+        padding: 16px;
+      }
+
+      canvas {
+        width: 100%;
+        height: 360px;
+        display: block;
+        border-radius: 12px;
+        background: repeating-linear-gradient(
+            to right,
+            transparent,
+            transparent 39px,
+            var(--grid) 40px
+          ),
+          repeating-linear-gradient(
+            to bottom,
+            transparent,
+            transparent 39px,
+            var(--grid) 40px
+          );
+      }
+
+      .footer {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.9rem;
+      }
+
+      .legend {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+        display: inline-block;
+      }
+
+      .meta {
+        color: var(--muted);
+      }
+
+      @media (max-width: 720px) {
+        .frame {
+          padding: 20px;
+        }
+
+        canvas {
+          height: 280px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="header">
+        <div>
+          <div class="title">Sequential Line Chart</div>
+          <div class="subtitle">Connects points in the order received.</div>
+        </div>
+        <div class="status" id="status">Awaiting data</div>
+      </div>
+      <div class="chart-shell">
+        <canvas id="chart" width="900" height="360"></canvas>
+      </div>
+      <div class="footer">
+        <div class="legend"><span class="dot"></span>Series</div>
+        <div class="meta" id="meta">No points yet</div>
+      </div>
+    </div>
+    <script type="module" src="/src/mcp-app.ts"></script>
+  </body>
+</html>
