@@ -6,6 +6,9 @@ type Series = { name: string; color: string | null; points: Point[] };
 const canvas = document.getElementById("chart") as HTMLCanvasElement;
 const statusEl = document.getElementById("status") as HTMLDivElement;
 const metaEl = document.getElementById("meta") as HTMLDivElement;
+const yMinInput = document.getElementById("y-min") as HTMLInputElement | null;
+const yMaxInput = document.getElementById("y-max") as HTMLInputElement | null;
+const yResetButton = document.getElementById("y-reset") as HTMLButtonElement | null;
 
 const app = new App({ name: "Line Chart App", version: "1.0.0" });
 let lastSeries: Series[] = [];
@@ -102,6 +105,25 @@ function scaleCanvas(): CanvasRenderingContext2D | null {
   return ctx;
 }
 
+function parseAxisInput(input: HTMLInputElement | null): number | null {
+  if (!input) {
+    return null;
+  }
+  const trimmed = input.value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const value = Number(trimmed);
+  return Number.isFinite(value) ? value : null;
+}
+
+function getYAxisOverrides(): { min: number | null; max: number | null } {
+  return {
+    min: parseAxisInput(yMinInput),
+    max: parseAxisInput(yMaxInput),
+  };
+}
+
 function drawChart(series: Series[]): void {
   const ctx = scaleCanvas();
   if (!ctx) {
@@ -119,7 +141,7 @@ function drawChart(series: Series[]): void {
   }
 
   statusEl.textContent = `Rendering ${series.length} series`;
-  metaEl.textContent = `Total points: ${allPoints.length} · ${series
+  let metaText = `Total points: ${allPoints.length} · ${series
     .map((item) => item.name)
     .join(", ")}`;
 
@@ -130,6 +152,21 @@ function drawChart(series: Series[]): void {
   let minY = Math.min(...ys);
   let maxY = Math.max(...ys);
 
+  const yOverrides = getYAxisOverrides();
+  const hasMinOverride = yOverrides.min !== null;
+  const hasMaxOverride = yOverrides.max !== null;
+  if (hasMinOverride) {
+    minY = yOverrides.min!;
+  }
+  if (hasMaxOverride) {
+    maxY = yOverrides.max!;
+  }
+  if (hasMinOverride && hasMaxOverride && minY >= maxY) {
+    minY = Math.min(...ys);
+    maxY = Math.max(...ys);
+    metaText += " · Invalid Y range, using auto";
+  }
+
   if (minX === maxX) {
     minX -= 1;
     maxX += 1;
@@ -138,6 +175,8 @@ function drawChart(series: Series[]): void {
     minY -= 1;
     maxY += 1;
   }
+
+  metaEl.textContent = metaText;
 
   const padding = 44;
   const plotWidth = width - padding * 2;
@@ -224,6 +263,30 @@ function handleToolResult(result: unknown) {
 app.ontoolresult = handleToolResult;
 app.connect();
 drawChart([]);
+
+if (yMinInput) {
+  yMinInput.addEventListener("input", () => {
+    drawChart(lastSeries);
+  });
+}
+
+if (yMaxInput) {
+  yMaxInput.addEventListener("input", () => {
+    drawChart(lastSeries);
+  });
+}
+
+if (yResetButton) {
+  yResetButton.addEventListener("click", () => {
+    if (yMinInput) {
+      yMinInput.value = "";
+    }
+    if (yMaxInput) {
+      yMaxInput.value = "";
+    }
+    drawChart(lastSeries);
+  });
+}
 
 window.addEventListener("resize", () => {
   drawChart(lastSeries);

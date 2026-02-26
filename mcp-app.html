@@ -111,6 +111,49 @@
         font-size: 0.9rem;
       }
 
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(16, 24, 32, 0.06);
+      }
+
+      .control {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .control input {
+        width: 86px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(16, 24, 32, 0.12);
+        background: #ffffff;
+        color: var(--ink);
+        font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+        font-size: 0.85rem;
+      }
+
+      .controls button {
+        border: none;
+        border-radius: 999px;
+        padding: 6px 12px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+        cursor: pointer;
+      }
+
+      .controls button:hover {
+        filter: brightness(0.95);
+      }
+
       .legend {
         display: flex;
         align-items: center;
@@ -156,6 +199,17 @@
       <div class="footer">
         <div class="legend"><span class="dot"></span>Series</div>
         <div class="meta" id="meta">No points yet</div>
+        <div class="controls" aria-label="Y axis controls">
+          <label class="control">
+            Y min
+            <input id="y-min" type="number" step="any" placeholder="auto" />
+          </label>
+          <label class="control">
+            Y max
+            <input id="y-max" type="number" step="any" placeholder="auto" />
+          </label>
+          <button id="y-reset" type="button">Auto</button>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/mcp-app.ts"></script>
