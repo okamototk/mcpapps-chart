@@ -2,14 +2,15 @@
 
 Draws a sequential line chart from an array of `{ x, y }` points using MCP Apps.
 
-## Tool
+## Tools
 
 `draw-line-chart`
 
-### Input
+### Line input
 
 ```json
 {
+  "title": "Weekly trend",
   "points": [
     { "x": 2, "y": 3 },
     { "x": 7, "y": 7 }
@@ -17,7 +18,7 @@ Draws a sequential line chart from an array of `{ x, y }` points using MCP Apps.
 }
 ```
 
-### Multiple series
+### Line multiple series
 
 ```json
 {
@@ -42,6 +43,27 @@ Draws a sequential line chart from an array of `{ x, y }` points using MCP Apps.
 }
 ```
 
+`draw-bar-chart`
+
+### Bar input
+
+```json
+{
+  "title": "Sales by month",
+  "labels": ["1月", "2月", "3月"],
+  "datasets": [
+    {
+      "name": "店舗A",
+      "data": [120, 150, 90]
+    },
+    {
+      "name": "店舗B",
+      "data": [100, 130, 110]
+    }
+  ]
+}
+```
+
 ## Development
 
 ```bash
@@ -51,4 +73,4 @@ npm start
 ```
 
 Start a host (e.g. `examples/basic-host` from the MCP Apps repo) and call the
-`draw-line-chart` tool to render the View.
+`draw-line-chart` or `draw-bar-chart` tool to render the View.

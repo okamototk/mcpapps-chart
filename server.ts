@@ -11,17 +11,24 @@ import * as z from "zod/v3";
 
 const DIST_DIR = path.join(import.meta.dirname, "dist");
 
-type Point = { x: number | string; y: number };
+type Point = { x: number | string; y: number; label?: string };
 type SeriesType = "line" | "bar";
 type SeriesInput = {
   name?: string;
   color?: string;
   points?: unknown;
-  type?: unknown;
+};
+type DatasetInput = {
+  name?: string;
+  color?: string;
+  data?: unknown;
 };
 type Series = { name: string; color: string | null; points: Point[]; type: SeriesType };
 
-function sanitizePoints(points: unknown): Point[] {
+function sanitizePoints(
+  points: unknown,
+  options: { allowStringX: boolean; allowNumberX: boolean },
+): Point[] {
   if (!Array.isArray(points)) {
     return [];
   }
@@ -33,32 +40,31 @@ function sanitizePoints(points: unknown): Point[] {
       }
       const rawX = (point as { x?: unknown }).x;
       const y = Number((point as { y?: unknown }).y);
+      const rawLabel = (point as { label?: unknown }).label;
+      const label = typeof rawLabel === "string" ? rawLabel.trim() : "";
       if (!Number.isFinite(y)) {
         return null;
       }
-      if (typeof rawX === "number" && Number.isFinite(rawX)) {
-        return { x: rawX, y };
+      if (options.allowNumberX && typeof rawX === "number" && Number.isFinite(rawX)) {
+        return label ? { x: rawX, y, label } : { x: rawX, y };
       }
-      if (typeof rawX === "string") {
-        const label = rawX.trim();
-        if (!label) {
+      if (options.allowStringX && typeof rawX === "string") {
+        const xLabel = rawX.trim();
+        if (!xLabel) {
           return null;
         }
-        return { x: label, y };
+        return { x: xLabel, y };
       }
       return null;
     })
     .filter((point): point is Point => point !== null);
 }
 
-function sanitizeSeriesType(value: unknown): SeriesType | null {
-  if (value === "bar" || value === "line") {
-    return value;
-  }
-  return null;
-}
-
-function sanitizeSeries(input: unknown): Series[] {
+function sanitizeSeries(
+  input: unknown,
+  type: SeriesType,
+  options: { allowStringX: boolean; allowNumberX: boolean },
+): Series[] {
   if (!Array.isArray(input)) {
     return [];
   }
@@ -76,9 +82,61 @@ function sanitizeSeries(input: unknown): Series[] {
         typeof (series as SeriesInput).color === "string"
           ? (series as SeriesInput).color!
           : null;
-      const points = sanitizePoints((series as SeriesInput).points);
-      const type = sanitizeSeriesType((series as SeriesInput).type) ?? "line";
+      const points = sanitizePoints((series as SeriesInput).points, options);
       return { name, color, points, type };
+    })
+    .filter((series): series is Series => series !== null);
+}
+
+function sanitizeLabels(labels: unknown): string[] {
+  if (!Array.isArray(labels)) {
+    return [];
+  }
+
+  return labels
+    .map((label) => (typeof label === "string" ? label.trim() : ""))
+    .filter((label) => label.length > 0);
+}
+
+function sanitizeTitle(title: unknown): string | null {
+  if (typeof title !== "string") {
+    return null;
+  }
+  const trimmed = title.trim();
+  return trimmed ? trimmed : null;
+}
+
+function sanitizeDatasets(labels: string[], datasets: unknown): Series[] {
+  if (labels.length === 0 || !Array.isArray(datasets)) {
+    return [];
+  }
+
+  return datasets
+    .map((dataset, index) => {
+      if (!dataset || typeof dataset !== "object") {
+        return null;
+      }
+      const name =
+        typeof (dataset as DatasetInput).name === "string"
+          ? (dataset as DatasetInput).name!
+          : `Series ${index + 1}`;
+      const color =
+        typeof (dataset as DatasetInput).color === "string"
+          ? (dataset as DatasetInput).color!
+          : null;
+      const rawData = (dataset as DatasetInput).data;
+      if (!Array.isArray(rawData)) {
+        return null;
+      }
+      const points: Point[] = [];
+      labels.forEach((label, labelIndex) => {
+        const y = Number(rawData[labelIndex]);
+        if (!Number.isFinite(y)) {
+          return;
+        }
+        points.push({ x: label, y });
+      });
+      return { name, color, points, type: "bar" };
     })
     .filter((series): series is Series => series !== null);
 }
@@ -90,27 +148,39 @@ export function createServer(): McpServer {
   });
 
   const resourceUri = "ui://line-chart/mcp-app.html";
-  const inputSchema = {
-    chartType: z
-      .enum(["line", "bar"])
-      .describe("Chart type to render.")
-      .optional(),
+  const lineInputSchema = {
+    title: z.string().describe("Chart title shown in the UI.").optional(),
     points: z
-      .array(z.object({ x: z.union([z.number(), z.string()]), y: z.number() }))
-      .describe("Array of points with x and y values.")
+      .array(z.object({ x: z.number(), y: z.number() }))
+      .describe("Array of points with numeric x and y values.")
       .optional(),
     series: z
       .array(
         z.object({
           name: z.string().optional(),
           color: z.string().optional(),
-          type: z.enum(["line", "bar"]).optional(),
-          points: z.array(
-            z.object({ x: z.union([z.number(), z.string()]), y: z.number() }),
-          ),
+          points: z.array(z.object({ x: z.number(), y: z.number() })),
         }),
       )
-      .describe("Multiple series with their own points.")
+      .describe("Multiple line series with their own points.")
+      .optional(),
+  } as unknown as ZodRawShapeCompat;
+
+  const barInputSchema = {
+    title: z.string().describe("Chart title shown in the UI.").optional(),
+    labels: z
+      .array(z.string())
+      .describe("Ordered x-axis labels for bar charts.")
+      .optional(),
+    datasets: z
+      .array(
+        z.object({
+          name: z.string().optional(),
+          color: z.string().optional(),
+          data: z.array(z.number()),
+        }),
+      )
+      .describe("Bar datasets aligned to the labels array.")
       .optional(),
   } as unknown as ZodRawShapeCompat;
 
@@ -121,31 +191,40 @@ export function createServer(): McpServer {
       title: "Draw Line Chart",
       description:
         "Draws a connected line chart from points or multiple series.",
-      inputSchema,
+      inputSchema: lineInputSchema,
       _meta: { ui: { resourceUri } },
     },
     async (
-      args: { points?: unknown; series?: unknown; chartType?: unknown },
+      args: { title?: unknown; points?: unknown; series?: unknown },
       _extra: unknown,
     ) => {
-      const { points, series, chartType } = args;
-      const sanitizedSeries = sanitizeSeries(series);
-      const sanitizedPoints = sanitizePoints(points);
-      const resolvedChartType = sanitizeSeriesType(chartType) ?? "line";
-      const payload =
+      const { title, points, series } = args;
+      const sanitizedTitle = sanitizeTitle(title);
+      const sanitizedSeries = sanitizeSeries(series, "line", {
+        allowStringX: false,
+        allowNumberX: true,
+      });
+      const sanitizedPoints = sanitizePoints(points, {
+        allowStringX: false,
+        allowNumberX: true,
+      });
+      const payloadBase =
         sanitizedSeries.length > 0
-          ? { chartType: resolvedChartType, series: sanitizedSeries }
+          ? { chartType: "line", series: sanitizedSeries }
           : {
-              chartType: resolvedChartType,
+              chartType: "line",
               series: [
                 {
                   name: "Series 1",
                   color: null,
                   points: sanitizedPoints,
-                  type: resolvedChartType,
+                  type: "line",
                 },
               ],
             };
+      const payload = sanitizedTitle
+        ? { ...payloadBase, title: sanitizedTitle }
+        : payloadBase;
       return {
         content: [
           {
@@ -162,32 +241,36 @@ export function createServer(): McpServer {
     "draw-bar-chart",
     {
       title: "Draw Bar Chart",
-      description: "Draws a bar chart from points or multiple series.",
-      inputSchema,
+      description: "Draws a bar chart from labels and datasets.",
+      inputSchema: barInputSchema,
       _meta: { ui: { resourceUri } },
     },
     async (
-      args: { points?: unknown; series?: unknown; chartType?: unknown },
+      args: { title?: unknown; labels?: unknown; datasets?: unknown },
       _extra: unknown,
     ) => {
-      const { points, series, chartType } = args;
-      const sanitizedSeries = sanitizeSeries(series);
-      const sanitizedPoints = sanitizePoints(points);
-      const resolvedChartType = sanitizeSeriesType(chartType) ?? "bar";
-      const payload =
+      const { title, labels, datasets } = args;
+      const sanitizedTitle = sanitizeTitle(title);
+      const sanitizedLabels = sanitizeLabels(labels);
+      const sanitizedDatasets = sanitizeDatasets(sanitizedLabels, datasets);
+      const sanitizedSeries = sanitizedDatasets;
+      const payloadBase =
         sanitizedSeries.length > 0
-          ? { chartType: resolvedChartType, series: sanitizedSeries }
+          ? { chartType: "bar", series: sanitizedSeries }
           : {
-              chartType: resolvedChartType,
+              chartType: "bar",
               series: [
                 {
                   name: "Series 1",
                   color: null,
-                  points: sanitizedPoints,
-                  type: resolvedChartType,
+                  points: [],
+                  type: "bar",
                 },
               ],
             };
+      const payload = sanitizedTitle
+        ? { ...payloadBase, title: sanitizedTitle }
+        : payloadBase;
       return {
         content: [
           {

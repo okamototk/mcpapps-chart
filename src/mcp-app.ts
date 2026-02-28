@@ -3,10 +3,12 @@ import { App } from "@modelcontextprotocol/ext-apps";
 type Point = { x: number | null; y: number; label?: string };
 type SeriesType = "line" | "bar";
 type Series = { name: string; color: string | null; points: Point[]; type: SeriesType };
+type ChartResult = { series: Series[]; title: string | null };
 
 const canvas = document.getElementById("chart") as HTMLCanvasElement;
 const statusEl = document.getElementById("status") as HTMLDivElement;
 const metaEl = document.getElementById("meta") as HTMLDivElement;
+const titleEl = document.getElementById("chart-title") as HTMLDivElement | null;
 const yMinInput = document.getElementById("y-min") as HTMLInputElement | null;
 const yMaxInput = document.getElementById("y-max") as HTMLInputElement | null;
 const yResetButton = document.getElementById("y-reset") as HTMLButtonElement | null;
@@ -14,6 +16,7 @@ const yResetButton = document.getElementById("y-reset") as HTMLButtonElement | n
 const app = new App({ name: "Line Chart App", version: "1.0.0" });
 let lastSeries: Series[] = [];
 const palette = ["#f06449", "#0b7a75", "#3d5a80", "#f4b942", "#6d597a"];
+const defaultTitle = titleEl?.textContent?.trim() || "Line + Bar Chart";
 
 function parsePoints(payload: unknown): Point[] {
   if (!payload || typeof payload !== "object") {
@@ -31,21 +34,23 @@ function parsePoints(payload: unknown): Point[] {
         return null;
       }
       const rawX = (point as { x?: unknown }).x;
+      const rawLabel = (point as { label?: unknown }).label;
+      const label = typeof rawLabel === "string" ? rawLabel.trim() : "";
       const y = Number((point as { y?: unknown }).y);
       if (!Number.isFinite(y)) {
         return null;
       }
 
       if (typeof rawX === "number" && Number.isFinite(rawX)) {
-        return { x: rawX, y };
+        return label ? { x: rawX, y, label } : { x: rawX, y };
       }
 
       if (typeof rawX === "string") {
-        const label = rawX.trim();
-        if (!label) {
+        const xLabel = rawX.trim();
+        if (!xLabel) {
           return null;
         }
-        return { x: null, y, label };
+        return { x: null, y, label: xLabel };
       }
 
       return null;
@@ -88,16 +93,29 @@ function parseSeries(payload: unknown): Series[] {
     .filter((item): item is Series => item !== null);
 }
 
-function decodeResult(result: unknown): Series[] {
+function parseTitle(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const rawTitle = (payload as { title?: unknown }).title;
+  if (typeof rawTitle !== "string") {
+    return null;
+  }
+  const title = rawTitle.trim();
+  return title ? title : null;
+}
+
+function decodeResult(result: unknown): ChartResult {
   const content = (result as { content?: Array<{ type: string; text?: string }> })
     .content;
   const text = content?.find((item) => item.type === "text")?.text;
   if (!text) {
-    return [];
+    return { series: [], title: null };
   }
 
   try {
     const payload = JSON.parse(text) as unknown;
+    const title = parseTitle(payload);
     const parsedSeries = parseSeries(payload);
     const chartType =
       (payload as { chartType?: unknown }).chartType === "bar"
@@ -106,24 +124,37 @@ function decodeResult(result: unknown): Series[] {
           ? "line"
           : null;
     if (parsedSeries.length > 0) {
-      return chartType
-        ? parsedSeries.map((item) => ({ ...item, type: chartType }))
+      const series = chartType
+        ? parsedSeries.map((item) => ({ ...item, type: chartType as SeriesType }))
         : parsedSeries;
+      return { series, title };
     }
     const points = parsePoints(payload);
     return points.length > 0
-      ? [
-          {
-            name: "Series 1",
-            color: null,
-            points,
-            type: chartType ?? "line",
-          },
-        ]
-      : [];
+      ? {
+          title,
+          series: [
+            {
+              name: "Series 1",
+              color: null,
+              points,
+              type: chartType ?? "line",
+            },
+          ],
+        }
+      : { series: [], title };
   } catch {
-    return [];
+    return { series: [], title: null };
   }
+}
+
+function updateTitle(title: string | null) {
+  if (!titleEl) {
+    return;
+  }
+  const nextTitle = title ?? defaultTitle;
+  titleEl.textContent = nextTitle;
+  document.title = nextTitle;
 }
 
 function scaleCanvas(): CanvasRenderingContext2D | null {
@@ -200,7 +231,6 @@ function drawChart(series: Series[]): void {
 
   const lineSeries = series.filter((item) => item.type === "line");
   const barSeries = series.filter((item) => item.type === "bar");
-  const isBarOnly = barSeries.length > 0 && lineSeries.length === 0;
   const allPoints = series.flatMap((item) => item.points);
   if (allPoints.length === 0) {
     statusEl.textContent = "No points provided";
@@ -303,19 +333,9 @@ function drawChart(series: Series[]): void {
     ctx.fillText(yValue.toFixed(2), padding - 10, y);
   }
 
-  const barXs = hasBarSeries
-    ? Array.from(
-        new Set(
-          series
-            .flatMap((item) => item.points.map((point) => point.x))
-            .filter((x): x is number => typeof x === "number"),
-        ),
-      ).sort((a, b) => a - b)
-    : [];
-
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  if (isBarOnly && barCategories.length > 0) {
+  if (barCategories.length > 0) {
     const step = Math.ceil(barCategories.length / 12);
     barCategories.forEach((label, index) => {
       if (index % step !== 0) {
@@ -328,20 +348,6 @@ function drawChart(series: Series[]): void {
       ctx.strokeStyle = "#101820";
       ctx.stroke();
       ctx.fillText(label, x, height - padding + 10);
-    });
-  } else if (hasBarSeries && barCategories.length > 0) {
-    const step = Math.ceil(barXs.length / 12);
-    barXs.forEach((xValue, index) => {
-      if (index % step !== 0) {
-        return;
-      }
-      const x = mapX(xValue);
-      ctx.beginPath();
-      ctx.moveTo(x, height - padding);
-      ctx.lineTo(x, height - padding + 6);
-      ctx.strokeStyle = "#101820";
-      ctx.stroke();
-      ctx.fillText(formatAxisLabel(xValue), x, height - padding + 10);
     });
   } else {
     for (let i = 0; i <= tickCount; i += 1) {
@@ -391,74 +397,31 @@ function drawChart(series: Series[]): void {
   });
 
   if (barSeries.length > 0) {
-    if (isBarOnly) {
-      if (barCategories.length === 0) {
-        return;
-      }
-      const groupWidth = plotWidth / barCategories.length;
-      const barWidth = Math.min(42, (groupWidth * 0.7) / barSeries.length);
-      const baselineY = mapY(0);
-      const categoryIndex = new Map(
-        barCategories.map((label, index) => [label, index]),
-      );
-
-      barSeries.forEach((item, seriesIndex) => {
-        const color = item.color ?? palette[seriesIndex % palette.length];
-        ctx.fillStyle = color;
-        item.points.forEach((point) => {
-          const label = getBarLabel(point);
-          if (!label) {
-            return;
-          }
-          const index = categoryIndex.get(label);
-          if (index === undefined) {
-            return;
-          }
-          const xOffset =
-            (seriesIndex - (barSeries.length - 1) / 2) * barWidth;
-          const x = mapCategoryX(index) + xOffset - barWidth / 2;
-          const y = mapY(point.y);
-          const height = baselineY - y;
-          const barHeight = Math.abs(height);
-          const barTop = height >= 0 ? y : baselineY;
-          ctx.fillRect(x, barTop, barWidth, barHeight);
-        });
-      });
+    if (barCategories.length === 0) {
       return;
     }
-
-    const barXs = Array.from(
-      new Set(
-        barSeries
-          .flatMap((item) => item.points.map((point) => point.x))
-          .filter((x): x is number => typeof x === "number"),
-      ),
-    ).sort((a, b) => a - b);
-    if (barXs.length === 0) {
-      return;
-    }
-    const deltas = barXs.slice(1).map((value, index) => value - barXs[index]);
-    const minDelta = deltas.length > 0 ? Math.min(...deltas) : maxX - minX;
-    const barBand =
-      Number.isFinite(minDelta) && minDelta > 0
-        ? (minDelta / (maxX - minX)) * plotWidth
-        : plotWidth;
-    const barWidth = Math.min(42, (barBand * 0.7) / barSeries.length);
+    const groupWidth = plotWidth / barCategories.length;
+    const barWidth = Math.min(42, (groupWidth * 0.7) / barSeries.length);
     const baselineY = mapY(0);
+    const categoryIndex = new Map(
+      barCategories.map((label, index) => [label, index]),
+    );
 
     barSeries.forEach((item, seriesIndex) => {
       const color = item.color ?? palette[seriesIndex % palette.length];
       ctx.fillStyle = color;
-      barXs.forEach((xValue) => {
-        const point = item.points.find(
-          (p) => typeof p.x === "number" && p.x === xValue,
-        );
-        if (!point) {
+      item.points.forEach((point) => {
+        const label = getBarLabel(point);
+        if (!label) {
+          return;
+        }
+        const index = categoryIndex.get(label);
+        if (index === undefined) {
           return;
         }
         const xOffset =
           (seriesIndex - (barSeries.length - 1) / 2) * barWidth;
-        const x = mapX(xValue) + xOffset - barWidth / 2;
+        const x = mapCategoryX(index) + xOffset - barWidth / 2;
         const y = mapY(point.y);
         const height = baselineY - y;
         const barHeight = Math.abs(height);
@@ -470,13 +433,16 @@ function drawChart(series: Series[]): void {
 }
 
 function handleToolResult(result: unknown) {
-  lastSeries = decodeResult(result);
+  const decoded = decodeResult(result);
+  lastSeries = decoded.series;
+  updateTitle(decoded.title);
   drawChart(lastSeries);
 }
 
 app.ontoolresult = handleToolResult;
 app.connect();
 drawChart([]);
+updateTitle(null);
 
 if (yMinInput) {
   yMinInput.addEventListener("input", () => {
