@@ -1,7 +1,7 @@
 import { App } from "@modelcontextprotocol/ext-apps";
 
 type Point = { x: number | null; y: number; label?: string };
-type SeriesType = "line" | "bar";
+type SeriesType = "line" | "bar" | "pie";
 type Series = { name: string; color: string | null; points: Point[]; type: SeriesType };
 type ChartResult = { series: Series[]; title: string | null };
 
@@ -9,6 +9,8 @@ const canvas = document.getElementById("chart") as HTMLCanvasElement;
 const statusEl = document.getElementById("status") as HTMLDivElement;
 const metaEl = document.getElementById("meta") as HTMLDivElement;
 const titleEl = document.getElementById("chart-title") as HTMLDivElement | null;
+const legendEl = document.getElementById("legend") as HTMLDivElement | null;
+const yControlsEl = document.getElementById("y-controls") as HTMLDivElement | null;
 const yMinInput = document.getElementById("y-min") as HTMLInputElement | null;
 const yMaxInput = document.getElementById("y-max") as HTMLInputElement | null;
 const yResetButton = document.getElementById("y-reset") as HTMLButtonElement | null;
@@ -85,9 +87,11 @@ function parseSeries(payload: unknown): Series[] {
       const type =
         (item as { type?: unknown }).type === "bar"
           ? "bar"
-          : (item as { type?: unknown }).type === "line"
-            ? "line"
-            : "line";
+          : (item as { type?: unknown }).type === "pie"
+            ? "pie"
+            : (item as { type?: unknown }).type === "line"
+              ? "line"
+              : "line";
       return { name, color, points, type };
     })
     .filter((item): item is Series => item !== null);
@@ -120,9 +124,11 @@ function decodeResult(result: unknown): ChartResult {
     const chartType =
       (payload as { chartType?: unknown }).chartType === "bar"
         ? "bar"
-        : (payload as { chartType?: unknown }).chartType === "line"
-          ? "line"
-          : null;
+        : (payload as { chartType?: unknown }).chartType === "pie"
+          ? "pie"
+          : (payload as { chartType?: unknown }).chartType === "line"
+            ? "line"
+            : null;
     if (parsedSeries.length > 0) {
       const series = chartType
         ? parsedSeries.map((item) => ({ ...item, type: chartType as SeriesType }))
@@ -194,7 +200,7 @@ function formatAxisLabel(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
-function getBarLabel(point: Point): string | null {
+function getPointLabel(point: Point): string | null {
   if (point.label) {
     return point.label;
   }
@@ -202,6 +208,10 @@ function getBarLabel(point: Point): string | null {
     return formatAxisLabel(point.x);
   }
   return null;
+}
+
+function getBarLabel(point: Point): string | null {
+  return getPointLabel(point);
 }
 
 function getBarCategories(barSeries: Series[]): string[] {
@@ -220,6 +230,70 @@ function getBarCategories(barSeries: Series[]): string[] {
   return labels;
 }
 
+function drawPieChart(
+  ctx: CanvasRenderingContext2D,
+  series: Series,
+  width: number,
+  height: number,
+) {
+  const slices = series.points
+    .map((point) => ({ point, value: point.y }))
+    .filter((item) => Number.isFinite(item.value) && item.value > 0);
+  if (slices.length === 0) {
+    statusEl.textContent = "No pie values";
+    metaEl.textContent = "Provide positive values";
+    return;
+  }
+
+  const total = slices.reduce((sum, item) => sum + item.value, 0);
+  const padding = 36;
+  const radius = Math.min(width, height) / 2 - padding;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  let startAngle = -Math.PI / 2;
+  slices.forEach((slice, index) => {
+    const angle = (slice.value / total) * Math.PI * 2;
+    const endAngle = startAngle + angle;
+    const color = palette[index % palette.length];
+
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    const midAngle = startAngle + angle / 2;
+    const labelRadius = radius * 0.72;
+    const labelX = centerX + Math.cos(midAngle) * labelRadius;
+    const labelY = centerY + Math.sin(midAngle) * labelRadius;
+    const label = getPointLabel(slice.point);
+    if (label) {
+      ctx.fillStyle = "#101820";
+      ctx.font = "12px Space Grotesk";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, labelX, labelY);
+    }
+
+    startAngle = endAngle;
+  });
+
+  statusEl.textContent = `Rendering 1 series`;
+  metaEl.textContent = `Slices: ${slices.length} · Total: ${total.toFixed(2)} · Pie`;
+}
+
+function updatePieUi(isPieOnly: boolean) {
+  const method = isPieOnly ? "add" : "remove";
+  if (legendEl) {
+    legendEl.classList[method]("is-hidden");
+  }
+  if (yControlsEl) {
+    yControlsEl.classList[method]("is-hidden");
+  }
+}
+
 function drawChart(series: Series[]): void {
   const ctx = scaleCanvas();
   if (!ctx) {
@@ -231,6 +305,14 @@ function drawChart(series: Series[]): void {
 
   const lineSeries = series.filter((item) => item.type === "line");
   const barSeries = series.filter((item) => item.type === "bar");
+  const pieSeries = series.filter((item) => item.type === "pie");
+  const isPieOnly = pieSeries.length > 0 && lineSeries.length === 0 && barSeries.length === 0;
+  updatePieUi(isPieOnly);
+  if (isPieOnly) {
+    drawPieChart(ctx, pieSeries[0], width, height);
+    return;
+  }
+
   const allPoints = series.flatMap((item) => item.points);
   if (allPoints.length === 0) {
     statusEl.textContent = "No points provided";
@@ -244,6 +326,8 @@ function drawChart(series: Series[]): void {
     uniqueTypes.length === 1
       ? uniqueTypes[0] === "bar"
         ? "Bar"
+        : uniqueTypes[0] === "pie"
+          ? "Pie"
         : "Line"
       : "Mixed";
   let metaText = `Total points: ${allPoints.length} · ${series

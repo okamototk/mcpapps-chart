@@ -64,6 +64,18 @@ Draws a sequential line chart from an array of `{ x, y }` points using MCP Apps.
 }
 ```
 
+`draw-pie-chart`
+
+### Pie input
+
+```json
+{
+  "title": "Category share",
+  "labels": ["Alpha", "Beta", "Gamma"],
+  "values": [45, 30, 25]
+}
+```
+
 ## Development
 
 ```bash

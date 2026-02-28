@@ -12,7 +12,7 @@ import * as z from "zod/v3";
 const DIST_DIR = path.join(import.meta.dirname, "dist");
 
 type Point = { x: number | string; y: number; label?: string };
-type SeriesType = "line" | "bar";
+type SeriesType = "line" | "bar" | "pie";
 type SeriesInput = {
   name?: string;
   color?: string;
@@ -22,6 +22,12 @@ type DatasetInput = {
   name?: string;
   color?: string;
   data?: unknown;
+};
+type PieInput = {
+  name?: string;
+  color?: string;
+  labels?: unknown;
+  values?: unknown;
 };
 type Series = { name: string; color: string | null; points: Point[]; type: SeriesType };
 
@@ -141,6 +147,38 @@ function sanitizeDatasets(labels: string[], datasets: unknown): Series[] {
     .filter((series): series is Series => series !== null);
 }
 
+function sanitizePieSeries(input: unknown): Series[] {
+  if (!input || typeof input !== "object") {
+    return [];
+  }
+
+  const labels = sanitizeLabels((input as PieInput).labels);
+  const values = (input as PieInput).values;
+  if (labels.length === 0 || !Array.isArray(values)) {
+    return [];
+  }
+
+  const points: Point[] = [];
+  labels.forEach((label, index) => {
+    const value = Number(values[index]);
+    if (!Number.isFinite(value)) {
+      return;
+    }
+    points.push({ x: label, y: value });
+  });
+
+  const name =
+    typeof (input as PieInput).name === "string"
+      ? (input as PieInput).name!
+      : "Series 1";
+  const color =
+    typeof (input as PieInput).color === "string"
+      ? (input as PieInput).color!
+      : null;
+
+  return [{ name, color, points, type: "pie" }];
+}
+
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "Chart MCP App Server",
@@ -182,6 +220,14 @@ export function createServer(): McpServer {
       )
       .describe("Bar datasets aligned to the labels array.")
       .optional(),
+  } as unknown as ZodRawShapeCompat;
+
+  const pieInputSchema = {
+    title: z.string().describe("Chart title shown in the UI.").optional(),
+    name: z.string().describe("Series name for the pie chart.").optional(),
+    color: z.string().describe("Base color for the pie chart.").optional(),
+    labels: z.array(z.string()).describe("Slice labels.").optional(),
+    values: z.array(z.number()).describe("Slice values.").optional(),
   } as unknown as ZodRawShapeCompat;
 
   registerAppTool(
@@ -265,6 +311,50 @@ export function createServer(): McpServer {
                   color: null,
                   points: [],
                   type: "bar",
+                },
+              ],
+            };
+      const payload = sanitizedTitle
+        ? { ...payloadBase, title: sanitizedTitle }
+        : payloadBase;
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(payload),
+          },
+        ],
+      };
+    },
+  );
+
+  registerAppTool(
+    server,
+    "draw-pie-chart",
+    {
+      title: "Draw Pie Chart",
+      description: "Draws a pie chart from labels and values.",
+      inputSchema: pieInputSchema,
+      _meta: { ui: { resourceUri } },
+    },
+    async (
+      args: { title?: unknown; name?: unknown; color?: unknown; labels?: unknown; values?: unknown },
+      _extra: unknown,
+    ) => {
+      const { title, name, color, labels, values } = args;
+      const sanitizedTitle = sanitizeTitle(title);
+      const sanitizedSeries = sanitizePieSeries({ name, color, labels, values });
+      const payloadBase =
+        sanitizedSeries.length > 0
+          ? { chartType: "pie", series: sanitizedSeries }
+          : {
+              chartType: "pie",
+              series: [
+                {
+                  name: "Series 1",
+                  color: null,
+                  points: [],
+                  type: "pie",
                 },
               ],
             };

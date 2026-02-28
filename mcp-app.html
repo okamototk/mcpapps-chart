@@ -161,6 +161,10 @@
         font-weight: 600;
       }
 
+      .is-hidden {
+        display: none;
+      }
+
       .dot {
         width: 10px;
         height: 10px;
@@ -196,9 +200,9 @@
         <canvas id="chart" width="900" height="360"></canvas>
       </div>
       <div class="footer">
-        <div class="legend"><span class="dot"></span>Series</div>
+        <div class="legend" id="legend"><span class="dot"></span>Series</div>
         <div class="meta" id="meta">No points yet</div>
-        <div class="controls" aria-label="Y axis controls">
+        <div class="controls" id="y-controls" aria-label="Y axis controls">
           <label class="control">
             Y min
             <input id="y-min" type="number" step="any" placeholder="auto" />
