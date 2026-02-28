@@ -5,7 +5,7 @@
   "private": true,
   "bin": "dist/main.js",
   "scripts": {
-    "build": "tsc --noEmit && tsc -p tsconfig.server.json && cross-env INPUT=mcp-app.html vite build",
+    "build": "tsc --noEmit && tsc -p tsconfig.server.json && node scripts/ensure-shebang.mjs && cross-env INPUT=mcp-app.html vite build",
     "prepare": "npm run build",
     "start": "concurrently \"cross-env NODE_ENV=development INPUT=mcp-app.html vite build --watch\" \"tsx watch main.ts\""
   },
