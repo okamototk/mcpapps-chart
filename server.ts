@@ -7,9 +7,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ZodRawShapeCompat } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import * as z from "zod/v3";
 
-const DIST_DIR = path.join(import.meta.dirname, "dist");
+const DIST_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "dist");
 
 type Point = { x: number | string; y: number; label?: string };
 type SeriesType = "line" | "bar" | "pie";
