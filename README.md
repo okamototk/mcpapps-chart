@@ -103,14 +103,15 @@ Create `.vscode/mcp.json` in the repo:
 ```json
 {
   "mcpServers": {
-    "mcp-apps-chart": {
-      "command": "/Users/USERNAME/work/mcpapps-chart/dist/main.js --stdio"
+    "mcp-app-chart": {
+      "command": "npx",
+      "args": ["-y", "/Users/USERNAME/work/mcpapps-chart", "--stdio"]
     }
   }
 }
 ```
 
-Then restart VS Code, open Copilot Chat, and select the `mcp-apps-chart` server.
+Then restart VS Code, open Copilot Chat, and select the `mcp-app-chart` server.
 
 ## Claude Desktop
 
@@ -119,26 +120,32 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "mcp-apps-chart": {
-      "command": "/Users/USERNAME/work/mcpapps-chart/dist/main.js --stdio"
+    "mcpapps-chart": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "/Users/USERNAME/work/mcpapps-chart",
+        "--stdio"
+      ]
     }
   }
 }
 ```
 
-Restart Claude Desktop and select the `mcp-apps-chart` server.
+Restart Claude Desktop and select the `mcpapps-chart` server.
 
 ## Windows guide
 
-Use an absolute path to the built server with escaped backslashes (or forward slashes).
+Use an absolute path to the repo with escaped backslashes (or forward slashes).
 
 VS Code `.vscode/mcp.json` example:
 
 ```json
 {
   "mcpServers": {
-    "mcp-apps-chart": {
-      "command": "C:\\Users\\USERNAME\\work\\mcpapps-chart\\dist\\main.js --stdio"
+    "mcp-app-chart": {
+      "command": "npx",
+      "args": ["-y", "C:\\Users\\USERNAME\\work\\mcpapps-chart", "--stdio"]
     }
   }
 }
@@ -153,8 +160,13 @@ Claude Desktop config example:
 ```json
 {
   "mcpServers": {
-    "mcp-apps-chart": {
-      "command": "C:\\Users\\USERNAME\\work\\mcpapps-chart\\dist\\main.js --stdio"
+    "mcpapps-chart": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "C:\\Users\\USERNAME\\work\\mcpapps-chart",
+        "--stdio"
+      ]
     }
   }
 }
