@@ -104,8 +104,7 @@ Create `.vscode/mcp.json` in the repo:
 {
   "mcpServers": {
     "mcp-apps-chart": {
-      "command": "npx",
-      "args": ["-y", "mcp-apps-chart", "--stdio"]
+      "command": "/Users/USERNAME/work/mcpapps-chart/dist/main.js --stdio"
     }
   }
 }
@@ -121,11 +120,42 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "mcp-apps-chart": {
-      "command": "npx",
-      "args": ["-y", "mcp-apps-chart", "--stdio"]
+      "command": "/Users/USERNAME/work/mcpapps-chart/dist/main.js --stdio"
     }
   }
 }
 ```
 
 Restart Claude Desktop and select the `mcp-apps-chart` server.
+
+## Windows guide
+
+Use an absolute path to the built server with escaped backslashes (or forward slashes).
+
+VS Code `.vscode/mcp.json` example:
+
+```json
+{
+  "mcpServers": {
+    "mcp-apps-chart": {
+      "command": "C:\\Users\\USERNAME\\work\\mcpapps-chart\\dist\\main.js --stdio"
+    }
+  }
+}
+```
+
+Claude Desktop config location:
+
+`C:\\Users\\USERNAME\\AppData\\Roaming\\Claude\\claude_desktop_config.json`
+
+Claude Desktop config example:
+
+```json
+{
+  "mcpServers": {
+    "mcp-apps-chart": {
+      "command": "C:\\Users\\USERNAME\\work\\mcpapps-chart\\dist\\main.js --stdio"
+    }
+  }
+}
+```
