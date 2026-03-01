@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as z from "zod/v3";
 
-const DIST_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "dist");
+const DIST_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 type Point = { x: number | string; y: number; label?: string };
 type SeriesType = "line" | "bar" | "pie";
@@ -180,6 +180,27 @@ function sanitizePieSeries(input: unknown): Series[] {
   return [{ name, color, points, type: "pie" }];
 }
 
+function buildPayload(
+  chartType: SeriesType,
+  series: Series[],
+  title: string | null,
+  fallbackPoints: Point[] = [],
+): { chartType: SeriesType; series: Series[]; title?: string } {
+  const resolvedSeries =
+    series.length > 0
+      ? series
+      : [
+          {
+            name: "Series 1",
+            color: null,
+            points: fallbackPoints,
+            type: chartType,
+          },
+        ];
+  const payload = { chartType, series: resolvedSeries } as const;
+  return title ? { ...payload, title } : payload;
+}
+
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "Chart MCP App Server",
@@ -255,23 +276,12 @@ export function createServer(): McpServer {
         allowStringX: false,
         allowNumberX: true,
       });
-      const payloadBase =
-        sanitizedSeries.length > 0
-          ? { chartType: "line", series: sanitizedSeries }
-          : {
-              chartType: "line",
-              series: [
-                {
-                  name: "Series 1",
-                  color: null,
-                  points: sanitizedPoints,
-                  type: "line",
-                },
-              ],
-            };
-      const payload = sanitizedTitle
-        ? { ...payloadBase, title: sanitizedTitle }
-        : payloadBase;
+      const payload = buildPayload(
+        "line",
+        sanitizedSeries,
+        sanitizedTitle,
+        sanitizedPoints,
+      );
       return {
         content: [
           {
@@ -300,24 +310,7 @@ export function createServer(): McpServer {
       const sanitizedTitle = sanitizeTitle(title);
       const sanitizedLabels = sanitizeLabels(labels);
       const sanitizedDatasets = sanitizeDatasets(sanitizedLabels, datasets);
-      const sanitizedSeries = sanitizedDatasets;
-      const payloadBase =
-        sanitizedSeries.length > 0
-          ? { chartType: "bar", series: sanitizedSeries }
-          : {
-              chartType: "bar",
-              series: [
-                {
-                  name: "Series 1",
-                  color: null,
-                  points: [],
-                  type: "bar",
-                },
-              ],
-            };
-      const payload = sanitizedTitle
-        ? { ...payloadBase, title: sanitizedTitle }
-        : payloadBase;
+      const payload = buildPayload("bar", sanitizedDatasets, sanitizedTitle);
       return {
         content: [
           {
@@ -345,23 +338,7 @@ export function createServer(): McpServer {
       const { title, name, color, labels, values } = args;
       const sanitizedTitle = sanitizeTitle(title);
       const sanitizedSeries = sanitizePieSeries({ name, color, labels, values });
-      const payloadBase =
-        sanitizedSeries.length > 0
-          ? { chartType: "pie", series: sanitizedSeries }
-          : {
-              chartType: "pie",
-              series: [
-                {
-                  name: "Series 1",
-                  color: null,
-                  points: [],
-                  type: "pie",
-                },
-              ],
-            };
-      const payload = sanitizedTitle
-        ? { ...payloadBase, title: sanitizedTitle }
-        : payloadBase;
+      const payload = buildPayload("pie", sanitizedSeries, sanitizedTitle);
       return {
         content: [
           {

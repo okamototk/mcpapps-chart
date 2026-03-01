@@ -84,17 +84,14 @@ function parseSeries(payload: unknown): Series[] {
           ? (item as { color?: string }).color!
           : null;
       const points = parsePoints({ points: (item as { points?: unknown }).points });
-      const type =
-        (item as { type?: unknown }).type === "bar"
-          ? "bar"
-          : (item as { type?: unknown }).type === "pie"
-            ? "pie"
-            : (item as { type?: unknown }).type === "line"
-              ? "line"
-              : "line";
+      const type = parseChartType((item as { type?: unknown }).type) ?? "line";
       return { name, color, points, type };
     })
     .filter((item): item is Series => item !== null);
+}
+
+function parseChartType(value: unknown): SeriesType | null {
+  return value === "bar" || value === "pie" || value === "line" ? value : null;
 }
 
 function parseTitle(payload: unknown): string | null {
@@ -121,14 +118,9 @@ function decodeResult(result: unknown): ChartResult {
     const payload = JSON.parse(text) as unknown;
     const title = parseTitle(payload);
     const parsedSeries = parseSeries(payload);
-    const chartType =
-      (payload as { chartType?: unknown }).chartType === "bar"
-        ? "bar"
-        : (payload as { chartType?: unknown }).chartType === "pie"
-          ? "pie"
-          : (payload as { chartType?: unknown }).chartType === "line"
-            ? "line"
-            : null;
+    const chartType = parseChartType(
+      (payload as { chartType?: unknown }).chartType,
+    );
     if (parsedSeries.length > 0) {
       const series = chartType
         ? parsedSeries.map((item) => ({ ...item, type: chartType as SeriesType }))
@@ -210,19 +202,15 @@ function getPointLabel(point: Point): string | null {
   return null;
 }
 
-function getBarLabel(point: Point): string | null {
-  return getPointLabel(point);
-}
-
 function getBarCategories(barSeries: Series[]): string[] {
   const labels: string[] = [];
   const seen = new Set<string>();
   barSeries.forEach((series) => {
-    series.points.forEach((point) => {
-      const label = getBarLabel(point);
-      if (!label || seen.has(label)) {
-        return;
-      }
+      series.points.forEach((point) => {
+      const label = getPointLabel(point);
+        if (!label || seen.has(label)) {
+          return;
+        }
       seen.add(label);
       labels.push(label);
     });
@@ -495,7 +483,7 @@ function drawChart(series: Series[]): void {
       const color = item.color ?? palette[seriesIndex % palette.length];
       ctx.fillStyle = color;
       item.points.forEach((point) => {
-        const label = getBarLabel(point);
+        const label = getPointLabel(point);
         if (!label) {
           return;
         }

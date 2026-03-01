@@ -86,3 +86,46 @@ npm start
 
 Start a host (e.g. `examples/basic-host` from the MCP Apps repo) and call the
 `draw-line-chart` or `draw-bar-chart` tool to render the View.
+
+## Clone and build
+
+```bash
+git clone https://github.com/okamototk/mcpapps-chart.git
+cd mcpapps-chart
+npm install
+npm run build
+```
+
+## VS Code Copilot (MCP)
+
+Create `.vscode/mcp.json` in the repo:
+
+```json
+{
+  "mcpServers": {
+    "mcp-apps-chart": {
+      "command": "npx",
+      "args": ["-y", "mcp-apps-chart", "--stdio"]
+    }
+  }
+}
+```
+
+Then restart VS Code, open Copilot Chat, and select the `mcp-apps-chart` server.
+
+## Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mcp-apps-chart": {
+      "command": "npx",
+      "args": ["-y", "mcp-apps-chart", "--stdio"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop and select the `mcp-apps-chart` server.
