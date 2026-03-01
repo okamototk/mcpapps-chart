@@ -6,74 +6,32 @@ Draws a sequential line chart from an array of `{ x, y }` points using MCP Apps.
 
 `draw-line-chart`
 
-### Line input
+### Sample prompt
 
-```json
-{
-  "title": "Weekly trend",
-  "points": [
-    { "x": 2, "y": 3 },
-    { "x": 7, "y": 7 }
-  ]
-}
+```
+Draw a line chart titled "Weekly trend" with points (2, 3) and (7, 7).
 ```
 
-### Line multiple series
+### Sample prompt
 
-```json
-{
-  "series": [
-    {
-      "name": "Alpha",
-      "color": "#f06449",
-      "points": [
-        { "x": 1, "y": 2 },
-        { "x": 3, "y": 5 }
-      ]
-    },
-    {
-      "name": "Beta",
-      "color": "#0b7a75",
-      "points": [
-        { "x": 1, "y": 1 },
-        { "x": 3, "y": 4 }
-      ]
-    }
-  ]
-}
+```
+Draw a multi-series line chart with two series: Alpha (#f06449) points (1, 2) and (3, 5), and Beta (#0b7a75) points (1, 1) and (3, 4).
 ```
 
 `draw-bar-chart`
 
-### Bar input
+### Sample prompt
 
-```json
-{
-  "title": "Sales by month",
-  "labels": ["1月", "2月", "3月"],
-  "datasets": [
-    {
-      "name": "店舗A",
-      "data": [120, 150, 90]
-    },
-    {
-      "name": "店舗B",
-      "data": [100, 130, 110]
-    }
-  ]
-}
+```
+Draw a bar chart titled "Sales by month" with labels 1月, 2月, 3月 and two datasets: 店舗A [120, 150, 90] and 店舗B [100, 130, 110].
 ```
 
 `draw-pie-chart`
 
-### Pie input
+### Sample prompt
 
-```json
-{
-  "title": "Category share",
-  "labels": ["Alpha", "Beta", "Gamma"],
-  "values": [45, 30, 25]
-}
+```
+Draw a pie chart titled "Category share" with labels Alpha, Beta, Gamma and values 45, 30, 25.
 ```
 
 ## Development
@@ -102,7 +60,7 @@ Create `.vscode/mcp.json` in the repo:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "mcp-app-chart": {
       "command": "npx",
       "args": ["-y", "/Users/USERNAME/work/mcpapps-chart", "--stdio"]
@@ -122,11 +80,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "mcpapps-chart": {
       "command": "npx",
-      "args": [
-        "-y",
-        "/Users/USERNAME/work/mcpapps-chart",
-        "--stdio"
-      ]
+      "args": ["-y" ,"/Users/USERNAME/work/mcpapps-chart" ,"--stdio"]
     }
   }
 }
@@ -142,7 +96,7 @@ VS Code `.vscode/mcp.json` example:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "mcp-app-chart": {
       "command": "npx",
       "args": ["-y", "C:\\Users\\USERNAME\\work\\mcpapps-chart", "--stdio"]
@@ -162,11 +116,7 @@ Claude Desktop config example:
   "mcpServers": {
     "mcpapps-chart": {
       "command": "npx",
-      "args": [
-        "-y",
-        "C:\\Users\\USERNAME\\work\\mcpapps-chart",
-        "--stdio"
-      ]
+      "args": ["-y" ,"C:\\Users\\USERNAME\\work\\mcpapps-chart" ,"--stdio"]
     }
   }
 }
