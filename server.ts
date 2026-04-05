@@ -366,6 +366,16 @@ export function createServer(): McpServer {
             uri: resourceUri,
             mimeType: RESOURCE_MIME_TYPE,
             text: html,
+            _meta: {
+              ui: {
+                csp: {
+                  resourceDomains: [
+                    "https://fonts.googleapis.com",
+                    "https://fonts.gstatic.com",
+                  ],
+                },
+              },
+            },
           },
         ],
       };

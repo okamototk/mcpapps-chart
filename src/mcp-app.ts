@@ -1,4 +1,5 @@
-import { App } from "@modelcontextprotocol/ext-apps";
+import { App, applyDocumentTheme, applyHostStyleVariables, applyHostFonts } from "@modelcontextprotocol/ext-apps";
+import type { McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 
 type Point = { x: number | null; y: number; label?: string };
 type SeriesType = "line" | "bar" | "pie";
@@ -223,6 +224,7 @@ function drawPieChart(
   series: Series,
   width: number,
   height: number,
+  colors: { ink: string; muted: string; grid: string },
 ) {
   const slices = series.points
     .map((point) => ({ point, value: point.y }))
@@ -258,7 +260,7 @@ function drawPieChart(
     const labelY = centerY + Math.sin(midAngle) * labelRadius;
     const label = getPointLabel(slice.point);
     if (label) {
-      ctx.fillStyle = "#101820";
+      ctx.fillStyle = colors.ink;
       ctx.font = "12px Space Grotesk";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -282,12 +284,21 @@ function updatePieUi(isPieOnly: boolean) {
   }
 }
 
+function getThemeColors(): { ink: string; muted: string; grid: string } {
+  const theme = document.documentElement.getAttribute("data-theme");
+  const isDark = theme === "dark";
+  return isDark
+    ? { ink: "#e8e6e3", muted: "#9ca3af", grid: "rgba(232,230,227,0.1)" }
+    : { ink: "#101820", muted: "#5a6772", grid: "rgba(16,24,32,0.12)" };
+}
+
 function drawChart(series: Series[]): void {
   const ctx = scaleCanvas();
   if (!ctx) {
     return;
   }
 
+  const colors = getThemeColors();
   const { width, height } = canvas.getBoundingClientRect();
   ctx.clearRect(0, 0, width, height);
 
@@ -297,7 +308,7 @@ function drawChart(series: Series[]): void {
   const isPieOnly = pieSeries.length > 0 && lineSeries.length === 0 && barSeries.length === 0;
   updatePieUi(isPieOnly);
   if (isPieOnly) {
-    drawPieChart(ctx, pieSeries[0], width, height);
+    drawPieChart(ctx, pieSeries[0], width, height, colors);
     return;
   }
 
@@ -379,7 +390,7 @@ function drawChart(series: Series[]): void {
   const mapCategoryX = (index: number) =>
     padding + ((index + 0.5) / Math.max(1, barCategories.length)) * plotWidth;
 
-  ctx.strokeStyle = "#101820";
+  ctx.strokeStyle = colors.ink;
   ctx.lineWidth = 1.4;
   ctx.beginPath();
   ctx.moveTo(padding, padding);
@@ -387,7 +398,7 @@ function drawChart(series: Series[]): void {
   ctx.lineTo(width - padding, height - padding);
   ctx.stroke();
 
-  ctx.fillStyle = "#5a6772";
+  ctx.fillStyle = colors.muted;
   ctx.font = "12px Space Grotesk";
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
@@ -400,7 +411,7 @@ function drawChart(series: Series[]): void {
     ctx.beginPath();
     ctx.moveTo(padding - 6, y);
     ctx.lineTo(padding, y);
-    ctx.strokeStyle = "#101820";
+    ctx.strokeStyle = colors.ink;
     ctx.stroke();
     ctx.fillText(yValue.toFixed(2), padding - 10, y);
   }
@@ -417,7 +428,7 @@ function drawChart(series: Series[]): void {
       ctx.beginPath();
       ctx.moveTo(x, height - padding);
       ctx.lineTo(x, height - padding + 6);
-      ctx.strokeStyle = "#101820";
+      ctx.strokeStyle = colors.ink;
       ctx.stroke();
       ctx.fillText(label, x, height - padding + 10);
     });
@@ -429,7 +440,7 @@ function drawChart(series: Series[]): void {
       ctx.beginPath();
       ctx.moveTo(x, height - padding);
       ctx.lineTo(x, height - padding + 6);
-      ctx.strokeStyle = "#101820";
+      ctx.strokeStyle = colors.ink;
       ctx.stroke();
       ctx.fillText(formatAxisLabel(xValue), x, height - padding + 10);
     }
@@ -505,14 +516,56 @@ function drawChart(series: Series[]): void {
 }
 
 function handleToolResult(result: unknown) {
+  const content = (result as { content?: Array<{ type: string; text?: string }>; isError?: boolean })
+    .content;
+  const isError = (result as { isError?: boolean }).isError;
+  if (isError) {
+    const text = content?.find((item) => item.type === "text")?.text;
+    statusEl.textContent = "Error";
+    metaEl.textContent = text ?? "Tool execution failed";
+    return;
+  }
   const decoded = decodeResult(result);
   lastSeries = decoded.series;
   updateTitle(decoded.title);
   drawChart(lastSeries);
 }
 
+function handleToolCancelled(params: { reason?: string }) {
+  statusEl.textContent = "Cancelled";
+  metaEl.textContent = params.reason ? `Reason: ${params.reason}` : "Tool execution was cancelled";
+}
+
+async function handleTeardown() {
+  lastSeries = [];
+  return {};
+}
+
+function handleHostContextChanged(ctx: McpUiHostContext) {
+  if (ctx.theme) {
+    applyDocumentTheme(ctx.theme);
+  }
+  if (ctx.styles?.variables) {
+    applyHostStyleVariables(ctx.styles.variables);
+  }
+  if (ctx.styles?.css?.fonts) {
+    applyHostFonts(ctx.styles.css.fonts);
+  }
+  drawChart(lastSeries);
+}
+
 app.ontoolresult = handleToolResult;
-app.connect();
+app.ontoolcancelled = handleToolCancelled;
+app.onteardown = handleTeardown;
+app.onhostcontextchanged = handleHostContextChanged;
+app.connect().then(() => {
+  const ctx = app.getHostContext();
+  if (ctx) {
+    handleHostContextChanged(ctx);
+  }
+}).catch((err) => {
+  console.error("Failed to connect:", err);
+});
 drawChart([]);
 updateTitle(null);
 

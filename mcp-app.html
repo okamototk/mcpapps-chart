@@ -19,7 +19,31 @@
         --accent: #f06449;
         --accent-2: #0b7a75;
         --grid: rgba(16, 24, 32, 0.12);
-        font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+        --bg-gradient: radial-gradient(circle at top, #fff5e6 0%, #f7f2ec 40%, #e9f4f2 100%);
+        --chart-bg: linear-gradient(135deg, #ffffff 0%, #fdf7f2 100%);
+        --chart-border: rgba(16, 24, 32, 0.08);
+        --control-bg: rgba(16, 24, 32, 0.06);
+        --input-bg: #ffffff;
+        --input-border: rgba(16, 24, 32, 0.12);
+        --shadow: 0 20px 60px rgba(16, 24, 32, 0.18);
+        font-family: var(--font-sans, "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif);
+      }
+
+      [data-theme="dark"] {
+        color-scheme: dark;
+        --ink: #e8e6e3;
+        --muted: #9ca3af;
+        --panel: rgba(30, 30, 35, 0.9);
+        --accent: #f06449;
+        --accent-2: #2dd4bf;
+        --grid: rgba(232, 230, 227, 0.1);
+        --bg-gradient: radial-gradient(circle at top, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+        --chart-bg: linear-gradient(135deg, #1e1e24 0%, #252530 100%);
+        --chart-border: rgba(232, 230, 227, 0.1);
+        --control-bg: rgba(232, 230, 227, 0.08);
+        --input-bg: #2a2a35;
+        --input-border: rgba(232, 230, 227, 0.15);
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
       }
 
       * {
@@ -32,7 +56,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: radial-gradient(circle at top, #fff5e6 0%, #f7f2ec 40%, #e9f4f2 100%);
+        background: var(--bg-gradient);
         color: var(--ink);
       }
 
@@ -41,7 +65,7 @@
         padding: 28px;
         border-radius: 24px;
         background: var(--panel);
-        box-shadow: 0 20px 60px rgba(16, 24, 32, 0.18);
+        box-shadow: var(--shadow);
         backdrop-filter: blur(10px);
       }
 
@@ -77,8 +101,8 @@
       .chart-shell {
         position: relative;
         border-radius: 18px;
-        border: 1px solid rgba(16, 24, 32, 0.08);
-        background: linear-gradient(135deg, #ffffff 0%, #fdf7f2 100%);
+        border: 1px solid var(--chart-border);
+        background: var(--chart-bg);
         padding: 16px;
       }
 
@@ -117,7 +141,7 @@
         gap: 10px;
         padding: 8px 12px;
         border-radius: 999px;
-        background: rgba(16, 24, 32, 0.06);
+        background: var(--control-bg);
       }
 
       .control {
@@ -132,10 +156,10 @@
         width: 86px;
         padding: 6px 8px;
         border-radius: 8px;
-        border: 1px solid rgba(16, 24, 32, 0.12);
-        background: #ffffff;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
         color: var(--ink);
-        font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+        font-family: var(--font-sans, "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif);
         font-size: 0.85rem;
       }
 
@@ -146,7 +170,7 @@
         background: var(--accent);
         color: #fff;
         font-weight: 600;
-        font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+        font-family: var(--font-sans, "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif);
         cursor: pointer;
       }
 
